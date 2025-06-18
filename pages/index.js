@@ -14,7 +14,7 @@ export default function Home() {
     setFileName("");
 
     try {
-      const response = await fetch("/api/download", {
+      const response = await fetch("https://mp3-backend.onrender.com/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
