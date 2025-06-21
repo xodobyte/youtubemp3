@@ -109,7 +109,7 @@ export default function Home() {
       </main>
 
       <footer className="text-center py-6 text-sm text-gray-500 border-t border-gray-800">
-        © {year} RealRyan | Built with ❤️ by Ryan
+        © {year} RealRyan | Built with ❤️
       </footer>
     </div>
   );
