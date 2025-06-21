@@ -99,7 +99,7 @@ export default function Home() {
         )}
 
         <a
-          href="https://www.paypal.com/donate?hosted_button_id=YOUR_BUTTON_ID"
+          href="https://paypal.me/realxryan"
           target="_blank"
           rel="noopener noreferrer"
           className="mt-10 inline-block bg-gray-800 hover:bg-gray-700 text-white px-5 py-3 rounded-lg transition-all"
