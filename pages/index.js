@@ -1,18 +1,37 @@
 import { useState, useEffect } from "react";
 
+const isYouTubeUrl = u => /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+/.test(u);
+
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("yt_recent") || "[]");
+    setRecent(saved);
+  }, []);
+
+  const addRecent = u => {
+    const updated = [u, ...recent.filter(r => r !== u)].slice(0, 5);
+    setRecent(updated);
+    localStorage.setItem("yt_recent", JSON.stringify(updated));
+  };
 
   const download = async () => {
+    if (!isYouTubeUrl(url)) {
+      setError("Please enter a valid YouTube video URL.");
+      return;
+    }
     setLoading(true);
-    setProgress(0);
+    setProgress(20);
     setError("");
     setFileName("");
+    addRecent(url);
 
     try {
       const response = await fetch("https://api-cdix.onrender.com/api/download", {
@@ -22,31 +41,33 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        let errorMessage = `Request failed with status ${response.status}`;
+        let msg = `Error ${response.status}`;
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || "Something went wrong";
-        } catch (e) {
-          errorMessage = response.statusText || "An unknown error occurred";
-        }
-        throw new Error(errorMessage);
+          const data = await response.json();
+          msg = data?.error || msg;
+        } catch {}
+        throw new Error(msg);
       }
 
-      const disposition = response.headers.get("Content-Disposition");
-      const nameMatch = disposition?.match(/filename="(.+?)"/);
-      const name = nameMatch ? nameMatch[1] : "download.mp3";
-      setFileName(name);
-
+      setProgress(60);
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const dispo = response.headers.get("Content-Disposition");
+      const match = dispo?.match(/filename="(.+?)"/);
+      const name = match?.[1] || `download_${Date.now()}.mp3`;
+
+      setFileName(name);
+      setProgress(90);
+
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = downloadUrl;
+      a.href = blobUrl;
       a.download = name;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Download failed");
     } finally {
       setLoading(false);
       setProgress(100);
@@ -54,27 +75,33 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col justify-between">
       <main className="flex flex-col items-center justify-center flex-grow p-6">
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 text-purple-400 drop-shadow-lg">
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 text-purple-300 drop-shadow-lg">
           🎵 YouTube to MP3 Converter
         </h1>
         <p className="text-gray-400 mb-8 text-center max-w-md">
-          Paste a YouTube URL and download high-quality MP3 audio instantly.
+          Paste a YouTube URL and download MP3 audio instantly.
         </p>
 
         <input
           type="text"
+          list="recent-urls"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Enter YouTube video URL"
-          className="w-full max-w-lg p-3 mb-4 rounded-lg bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+          className="w-full max-w-lg p-3 mb-4 rounded-lg bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
         />
+        <datalist id="recent-urls">
+          {recent.map((u, i) => (
+            <option key={i} value={u} />
+          ))}
+        </datalist>
 
         <button
           onClick={download}
-          disabled={loading || !url}
-          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-full font-medium transition-all"
+          disabled={loading || !url.trim()}
+          className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-full font-medium transition-all"
         >
           {loading ? "Converting..." : "Convert & Download"}
         </button>
@@ -94,9 +121,7 @@ export default function Home() {
           <p className="mt-4 text-green-400 text-sm">✅ Downloaded: {fileName}</p>
         )}
 
-        {error && (
-          <p className="mt-4 text-red-400 text-sm">❌ Error: {error}</p>
-        )}
+        {error && <p className="mt-4 text-red-400 text-sm">❌ Error: {error}</p>}
 
         <a
           href="https://paypal.me/realxryan"
@@ -109,7 +134,7 @@ export default function Home() {
       </main>
 
       <footer className="text-center py-6 text-sm text-gray-500 border-t border-gray-800">
-        © {year} RealRyan | Built with ❤️
+        © {year} Ryan | Built with ❤️
       </footer>
     </div>
   );
