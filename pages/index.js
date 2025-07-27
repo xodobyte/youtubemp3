@@ -23,9 +23,9 @@ export default function Home() {
   };
 
   const download = async () => {
-    if (!isYouTubeUrl(url)) {
-      setError("Please enter a valid YouTube video URL.");
-      return;
+    if (!url?.trim()) {
+  setError("Please enter a song name or YouTube URL.");
+  return;
     }
     setLoading(true);
     setProgress(20);
