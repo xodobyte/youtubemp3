@@ -23,56 +23,59 @@ export default function Home() {
   };
 
   const download = async () => {
-    if (!url?.trim()) {
-  setError("Please enter a song name or YouTube URL.");
-  return;
+  if (!url?.trim()) {
+    setError("Please enter a song name or YouTube URL.");
+    return;
+  }
+
+  setLoading(true);
+  setProgress(20);
+  setError("");
+  setFileName("");
+  addRecent(url);
+
+  try {
+    const response = await fetch("https://api-cdix.onrender.com/api/download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      let msg = `Error ${response.status}`;
+      try {
+        const data = await response.json();
+        msg = data?.error || msg;
+      } catch {}
+      throw new Error(msg);
     }
-    setLoading(true);
-    setProgress(20);
-    setError("");
-    setFileName("");
-    addRecent(url);
 
-    try {
-      const response = await fetch("https://api-cdix.onrender.com/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
+    const { title, audioUrl } = await response.json();
 
-      if (!response.ok) {
-        let msg = `Error ${response.status}`;
-        try {
-          const data = await response.json();
-          msg = data?.error || msg;
-        } catch {}
-        throw new Error(msg);
-      }
+    setProgress(70);
+    setFileName(title + ".mp3");
 
-      setProgress(60);
-      const blob = await response.blob();
-      const dispo = response.headers.get("Content-Disposition");
-      const match = dispo?.match(/filename="(.+?)"/);
-      const name = match?.[1] || `download_${Date.now()}.mp3`;
+    const audioResponse = await fetch(audioUrl);
+    const blob = await audioResponse.blob();
 
-      setFileName(name);
-      setProgress(90);
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = title + ".mp3";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
 
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      setError(err.message || "Download failed");
-    } finally {
-      setLoading(false);
-      setProgress(100);
-    }
-  };
+    setProgress(100);
+  } catch (err) {
+    console.error(err);
+    setError(err.message || "Download failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col justify-between">
